@@ -1,0 +1,56 @@
+
+
+This is a notebook for automating the process of calculating total attendence from Zoom usage reports.
+Running this does assume that you have R (here:https://www.r-project.org) and rstudio (https://www.rstudio.com/products/rstudio/download/) installed. Both of these are free.
+
+It requires three things to produce an accurate output of how many sessions a student attended:
+
+1)Zoom meeting logs with attendence (see here on how to get them:https://support.zoom.us/hc/en-us/articles/216378603-Meeting-registration-and-polling-reports)
+
+2)All those files to be in CSV format, and all in the same folder
+
+3)Students to have consistently used the same username throughout the term (this isn't a dealbreaker, but you may have to do a bit of manual troubleshooting they didn't)
+
+#setup
+Everything within chunks like this is code ↓. Clicking the green arrow to the right will run the code chunk. All of the code chunks need all previous chunks to have been run to work. 
+
+```{r}
+intstall.packages("pacman")#this is the only package you have to manually install
+pacman::p_load(tidyverse,data.table,janitor,openxlsx) #this line will load the packages if you already have them, and download and then load them if you don't
+#Put your name within the quotes right here
+your_name <- "Put your name right here"
+#setting working directory
+#This is setting your working directory. This should be the file on your computer with all of the attendance CSVs in it. They should be the only CSVs in that file. 
+setwd("~/Desktop/Grad School/TA stuff/Summer 2021/Attendence")#This is how it appears on my computer. Yours will be different. 
+```
+
+#making list
+This makes a list object. It will tell you the number of times that a name appears.
+```{r}
+#this isolates out just the csv files
+file_list <- list.files(pattern="csv")
+
+#initiate a blank data frame, each iteration of the loop will append the data from the given file to this variable
+dataset <- data.frame()
+
+#for loop gets all ot
+#had to specify columns to get rid of the total column
+for (i in 1:length(file_list)){
+  temp_data <- fread(file_list[i],select = c(1))#only first column
+  dataset <- bind_rows(dataset, temp_data) #for each iteration, bind the new data to the building dataset
+}
+
+attendance <- dataset %>% 
+  clean_names() %>% filter(name_original_name !=your_name)  #remove your own name
+
+attend.tally <- within(attendance, Count <- ave(name_original_name, list(name_original_name), FUN=length)) %>% unique() 
+```
+
+Saving. This file will appear in whatever folder you set as the working directory.
+```{r}
+#viola, you have a R object that counts how many times each name appeared. note that you still have to look through this to see if students changed names
+#or whatever, but it's at least easier. make sure to tell your students to set one consistent name at the beginning of the quarter
+write.xlsx(attend.tally, file = "attendance.actual.summer.2021.xlsx")
+
+```
+And you're done!
